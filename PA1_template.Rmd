@@ -98,6 +98,94 @@ The graph is stored in the file: **figures/`r filename`**
 
 ## Imputing missing values ================
 
+After looking over the data, it was decided that the best way to impute the missing values was to take the average of the leading and trailing good data around a missing day. (The NA's are
+complete for full days, no partials.) For contiguous missing data, it skips until it finds the
+next good data. Should the first and last data be missing (they are), then the function will use the same value of the closest good data.
+
+```{r}
+na_vector <- is.na(rawdata$steps)
+na_cnt <- sum(na_vector)
+na_days <- rawdata[na_vector, ]
+na_dist <- na_days %>% group_by(date) %>% summarize(count=n())
+na_dist
+tot_days <- rawdata %>% group_by(date) %>% summarize(count=sum(steps))
+tot_na_days <- nrow(na_dist)
+
+imp_steps_per_day <- steps_per_day
+impute_steps <- function(x=imp_steps_per_day$steps_per_day) {
+    max_row <- length(x)
+    last_val <- NA
+    prior_na <- FALSE
+    val <- NA
+    for(i in 1:max_row) {
+        val <- x[i]
+        if(!is.na(val)) {
+            last_val <- val
+            next
+        }
+    
+#any NA will be replaced with average of good values prior and past the hole
+#first and last NA will just copy the closest existing value
+        if(i == max_row) {                  #special case, if last NA, use previous val
+            if(is.na(last_val)) stop("Error all values are NA")
+            x[i] <- last_val
+            next
+        }
+    
+        val <- NA
+        if(i ==1) {                         #special case with begin of list since no priors
+            prior_na <- TRUE
+            for(j in 2:max_row) {
+                val <- x[j]
+                if(!is.na(val)) {
+                    x[i] <- val
+                    break
+                }
+            }
+            next
+        }
+        
+        x[i] <- last_val
+        for(j in (i+1):max_row) {
+            val <- x[j]
+            if(!is.na(val)) {
+                x[i] <- (last_val + val)/2
+                break
+            }
+        }
+    }
+    x
+}
+imp_steps_per_day$steps_per_day <- impute_steps()
+
+filename <- "3_imputed+steps_per_day_hist.png"
+imputed_steps_per_day_fig <- paste(figdir, filename, sep="")
+png(filename = imputed_steps_per_day_fig, width=600, height=600)
+g <-qplot(data=imp_steps_per_day, steps_per_day, geom="histogram") +
+    ggtitle("Steps per day\n missing values are average of neightboring good data")
+g
+dev.off()
+g
+imp_mean <- mean(imp_steps_per_day$steps_per_day)
+imp_median <- median(imp_steps_per_day$steps_per_day)
+per_mean <- trunc(imp_mean/mean_day *100)
+per_median <- trunc(imp_median/median_day *100)
+
+```
+
+###Results ------------
+Total missing data values: **`r na_cnt`**
+
+The number of days with NA: **`r tot_na_days`**
+
+The mean is now **`r imp_mean` vs `r mean_day`**
+
+The median is now **`r imp_median` vs `r median_day`**
+
+By imputing the missing values, we have slightly lowered the overall mean (`r per_mean`%) and 
+median (`r per_median`%).
+
+The histogram is stored in the file: **figures/`r filename`**
 
 
 ## Are there differences in activity patterns between weekdays and weekends? ==

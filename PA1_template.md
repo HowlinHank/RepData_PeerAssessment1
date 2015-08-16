@@ -143,18 +143,147 @@ g
 max_steps <- max(int_steps$daily_ave)
 max_day <- which.max(int_steps$daily_ave)
 hour <- trunc(max_day/12)
-min <- (max_day *12) %% 60
+min <- (max_day * 5) %% 60
 ```
 
 ###Results ------------
 The maximum number of steps is: **206.1698113**
 
-Which happens at interval: **104**  or Hour= **8**, Minute = **48**
+Which happens at interval: **104**  or Hour= **8**, Minute = **40**
 
 The graph is stored in the file: **figures/2_ave_daily.png**
 
 ## Imputing missing values ================
 
+After looking over the data, it was decided that the best way to impute the missing values was to take the average of the leading and trailing good data around a missing day. (The NA's are
+complete for full days, no partials.) For contiguous missing data, it skips until it finds the
+next good data. Should the first and last data be missing (they are), then the function will use the same value of the closest good data.
+
+
+```r
+na_vector <- is.na(rawdata$steps)
+na_cnt <- sum(na_vector)
+na_days <- rawdata[na_vector, ]
+na_dist <- na_days %>% group_by(date) %>% summarize(count=n())
+na_dist
+```
+
+```
+## Source: local data frame [8 x 2]
+## 
+##         date count
+## 1 2012-10-01   288
+## 2 2012-10-08   288
+## 3 2012-11-01   288
+## 4 2012-11-04   288
+## 5 2012-11-09   288
+## 6 2012-11-10   288
+## 7 2012-11-14   288
+## 8 2012-11-30   288
+```
+
+```r
+tot_days <- rawdata %>% group_by(date) %>% summarize(count=sum(steps))
+tot_na_days <- nrow(na_dist)
+
+imp_steps_per_day <- steps_per_day
+impute_steps <- function(x=imp_steps_per_day$steps_per_day) {
+    max_row <- length(x)
+    last_val <- NA
+    prior_na <- FALSE
+    val <- NA
+    for(i in 1:max_row) {
+        val <- x[i]
+        if(!is.na(val)) {
+            last_val <- val
+            next
+        }
+    
+#any NA will be replaced with average of good values prior and past the hole
+#first and last NA will just copy the closest existing value
+        if(i == max_row) {                  #special case, if last NA, use previous val
+            if(is.na(last_val)) stop("Error all values are NA")
+            x[i] <- last_val
+            next
+        }
+    
+        val <- NA
+        if(i ==1) {                         #special case with begin of list since no priors
+            prior_na <- TRUE
+            for(j in 2:max_row) {
+                val <- x[j]
+                if(!is.na(val)) {
+                    x[i] <- val
+                    break
+                }
+            }
+            next
+        }
+        
+        x[i] <- last_val
+        for(j in (i+1):max_row) {
+            val <- x[j]
+            if(!is.na(val)) {
+                x[i] <- (last_val + val)/2
+                break
+            }
+        }
+    }
+    x
+}
+imp_steps_per_day$steps_per_day <- impute_steps()
+
+filename <- "3_imputed+steps_per_day_hist.png"
+imputed_steps_per_day_fig <- paste(figdir, filename, sep="")
+png(filename = imputed_steps_per_day_fig, width=600, height=600)
+g <-qplot(data=imp_steps_per_day, steps_per_day, geom="histogram") +
+    ggtitle("Steps per day\n missing values are average of neightboring good data")
+g
+```
+
+```
+## stat_bin: binwidth defaulted to range/30. Use 'binwidth = x' to adjust this.
+```
+
+```r
+dev.off()
+```
+
+```
+## png 
+##   2
+```
+
+```r
+g
+```
+
+```
+## stat_bin: binwidth defaulted to range/30. Use 'binwidth = x' to adjust this.
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-1-1.png) 
+
+```r
+imp_mean <- mean(imp_steps_per_day$steps_per_day)
+imp_median <- median(imp_steps_per_day$steps_per_day)
+per_mean <- trunc(imp_mean/mean_day *100)
+per_median <- trunc(imp_median/median_day *100)
+```
+
+###Results ------------
+Total missing data values: **2304**
+
+The number of days with NA: **8**
+
+The mean is now **1.0372484\times 10^{4} vs 1.0766189\times 10^{4}**
+
+The median is now **1.0571\times 10^{4} vs 1.0765\times 10^{4}**
+
+By imputing the missing values, we have slightly lowered the overall mean (96%) and 
+median (98%).
+
+The histogram is stored in the file: **figures/3_imputed+steps_per_day_hist.png**
 
 
 ## Are there differences in activity patterns between weekdays and weekends? ==
