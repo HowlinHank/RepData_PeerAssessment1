@@ -1,11 +1,6 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-author: "HowlinHank"
-date: "August 16, 2015"
-output: 
-  html_document:
-    keep_md: true
----
+# Reproducible Research: Peer Assessment 1
+HowlinHank  
+August 16, 2015  
 
 This work is for the Peer Assessment 1 for the Aug 2015 Reproducible Research class taught by
 Roger Peng as part of Coursera's Data Science Specialization.
@@ -20,58 +15,107 @@ Figures that are created will be stored in the figure directory in png format at
 resolution.
 
 
-```{r setoptions, echo=FALSE, results = "hide"}
-library(dplyr);  library(ggplot2); library(knitr)
-opts_chunk$set(echo=TRUE, fig.height=4)
+
+```
+## 
+## Attaching package: 'dplyr'
+## 
+## The following objects are masked from 'package:stats':
+## 
+##     filter, lag
+## 
+## The following objects are masked from 'package:base':
+## 
+##     intersect, setdiff, setequal, union
 ```
 
 ## Loading and preprocessing the data ======================
 
 Check the activity.csv file to see whether it has a header and what separator it uses
 
-```{r peek_at_file}
+
+```r
 setwd("~/rdata/ReproRes-Proj1/RepData_PeerAssessment1") 
 figdir <- "~/rdata/ReproRes-Proj1/RepData_PeerAssessment1/figures/"
 readLines("activity.csv", n=4)
 ```
 
+```
+## [1] "\"steps\",\"date\",\"interval\"" "NA,\"2012-10-01\",0"            
+## [3] "NA,\"2012-10-01\",5"             "NA,\"2012-10-01\",10"
+```
+
 The data was loaded from the local file system and stored in a data frame. I will convert the date
 field to a Date format.
 
-```{r load_process}
+
+```r
 cls <- c("steps"="numeric", "date"="character", "interval"="numeric")
 rawdata <-read.csv("activity.csv", header=TRUE, colClasses=cls)
 rawdata$date <- as.Date(rawdata$date, "%Y-%m-%d")
 str(rawdata)
 ```
 
+```
+## 'data.frame':	17568 obs. of  3 variables:
+##  $ steps   : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ date    : Date, format: "2012-10-01" "2012-10-01" ...
+##  $ interval: num  0 5 10 15 20 25 30 35 40 45 ...
+```
+
 
 ## What is mean total number of steps taken per day? =========
 
-```{r steps_per_day}
+
+```r
 steps_per_day <- rawdata %>% group_by(date) %>% summarize(steps_per_day= sum(steps))
 filename <- "1_steps_per_day_hist.png"
 steps_per_day_fig <- paste(figdir, filename, sep="")
 png(filename = steps_per_day_fig, width=600, height=600)
 g <-qplot(data=steps_per_day, steps_per_day, geom="histogram")
 g
+```
+
+```
+## stat_bin: binwidth defaulted to range/30. Use 'binwidth = x' to adjust this.
+```
+
+```r
 dev.off()
+```
+
+```
+## png 
+##   2
+```
+
+```r
 g
+```
+
+```
+## stat_bin: binwidth defaulted to range/30. Use 'binwidth = x' to adjust this.
+```
+
+![](PA1_template_files/figure-html/steps_per_day-1.png) 
+
+```r
 mean_day <- mean(steps_per_day$steps_per_day, na.rm=TRUE)
 median_day <- median(steps_per_day$steps_per_day, na.rm=TRUE)
 ```
 
 ### Results -------------------------------
-The mean steps per day = **`r mean_day`**
+The mean steps per day = **1.0766189\times 10^{4}**
 
-The median steps per day = **`r median_day`**
+The median steps per day = **1.0765\times 10^{4}**
 
-The histogram is stored in the file: **figures/`r filename`**
+The histogram is stored in the file: **figures/1_steps_per_day_hist.png**
 
 
 ## What is the average daily activity pattern? ================
 
-```{r ave_daily}
+
+```r
 int_steps <- rawdata %>% group_by(interval) %>% summarise(daily_ave = mean(steps, na.rm=TRUE))
 filename <- "2_ave_daily.png"
 ave_daily_fig <- paste(figdir, filename, sep="")
@@ -82,19 +126,32 @@ g <- qplot(interval, daily_ave, data=int_steps, geom="bar", stat="identity",
     ggtitle("Average daily steps per 5 min interval")
 g
 dev.off()
+```
+
+```
+## png 
+##   2
+```
+
+```r
 g
+```
+
+![](PA1_template_files/figure-html/ave_daily-1.png) 
+
+```r
 max_steps <- max(int_steps$daily_ave)
 max_day <- which.max(int_steps$daily_ave)
 hour <- trunc(max_day/12)
-min <- (max_day * 5) %% 60
+min <- (max_day *12) %% 60
 ```
 
 ###Results ------------
-The maximum number of steps is: **`r max_steps`**
+The maximum number of steps is: **206.1698113**
 
-Which happens at interval: **`r max_day`**  or Hour= **`r hour`**, Minute = **`r min`**
+Which happens at interval: **104**  or Hour= **8**, Minute = **48**
 
-The graph is stored in the file: **figures/`r filename`**
+The graph is stored in the file: **figures/2_ave_daily.png**
 
 ## Imputing missing values ================
 
@@ -108,8 +165,37 @@ The graph is stored in the file: **figures/`r filename`**
 
 ## Appendix 1 - working session information --------------
 
-```{r, echo=TRUE}
+
+```r
 sessionInfo()
+```
+
+```
+## R version 3.2.1 (2015-06-18)
+## Platform: i386-w64-mingw32/i386 (32-bit)
+## Running under: Windows 7 x64 (build 7601) Service Pack 1
+## 
+## locale:
+## [1] LC_COLLATE=English_United States.1252 
+## [2] LC_CTYPE=English_United States.1252   
+## [3] LC_MONETARY=English_United States.1252
+## [4] LC_NUMERIC=C                          
+## [5] LC_TIME=English_United States.1252    
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+## [1] knitr_1.10.5  ggplot2_1.0.1 dplyr_0.4.2  
+## 
+## loaded via a namespace (and not attached):
+##  [1] Rcpp_0.12.0      magrittr_1.5     MASS_7.3-40      munsell_0.4.2   
+##  [5] colorspace_1.2-6 R6_2.1.0         stringr_1.0.0    plyr_1.8.3      
+##  [9] tools_3.2.1      parallel_3.2.1   grid_3.2.1       gtable_0.1.2    
+## [13] DBI_0.3.1        htmltools_0.2.6  yaml_2.1.13      lazyeval_0.1.10 
+## [17] assertthat_0.1   digest_0.6.8     reshape2_1.4.1   formatR_1.2     
+## [21] evaluate_0.7     rmarkdown_0.7    labeling_0.3     stringi_0.5-5   
+## [25] scales_0.2.5     proto_0.3-10
 ```
 
 
