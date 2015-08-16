@@ -185,59 +185,63 @@ na_dist
 ```r
 tot_days <- rawdata %>% group_by(date) %>% summarize(count=sum(steps))
 tot_na_days <- nrow(na_dist)
+int_day <- 24*60/5
 
-imp_steps_per_day <- steps_per_day
-impute_steps <- function(x=imp_steps_per_day$steps_per_day) {
+imp_raw <- rawdata
+impute_steps <- function(x=imp_raw$steps) {
     max_row <- length(x)
-    last_val <- NA
-    prior_na <- FALSE
-    val <- NA
-    for(i in 1:max_row) {
-        val <- x[i]
-        if(!is.na(val)) {
-            last_val <- val
+    last_day <- int_day * trunc((max_row - 1)/int_day)
+    last_val <- rep(NA, int_day)
+    prior_na <- rep(FALSE, int_day)
+    val <- rep(NA, int_day)
+    for(i in seq(1,max_row)) {
+        int_off <- ((i-1) %% int_day) + 1 ##Remember does 1-N not 0-N
+        val[int_off] <- x[i]
+        if(!is.na(val[int_off])) {
+            last_val[int_off] <- val[int_off]
             next
         }
     
 #any NA will be replaced with average of good values prior and past the hole
 #first and last NA will just copy the closest existing value
-        if(i == max_row) {                  #special case, if last NA, use previous val
-            if(is.na(last_val)) stop("Error all values are NA")
-            x[i] <- last_val
+        if(i >= last_day) {                #special case, if last NA, use previous val
+            if(is.na(last_val[int_off])) stop("Error all values are NA")
+            x[i] <- last_val[int_off]
             next
         }
     
-        val <- NA
-        if(i ==1) {                         #special case with begin of list since no priors
-            prior_na <- TRUE
-            for(j in 2:max_row) {
-                val <- x[j]
-                if(!is.na(val)) {
-                    x[i] <- val
+        val[int_off] <- NA
+        if(i <= int_day) {                      #special case with begin of list since no priors
+            prior_na[int_off] <- TRUE
+            for(j in seq((int_off + int_day),max_row,int_day)) {
+                val[int_off] <- x[j]
+                if(!is.na(val[int_off])) {
+                    x[i] <- val[int_off]
                     break
                 }
             }
             next
         }
         
-        x[i] <- last_val
-        for(j in (i+1):max_row) {
-            val <- x[j]
-            if(!is.na(val)) {
-                x[i] <- (last_val + val)/2
+        x[i] <- last_val[int_off]
+        for(j in seq((i+int_day),max_row, int_day)){
+            val[int_off] <- x[j]
+            if(!is.na(val[int_off])) {
+                x[i] <- (last_val[int_off] + val[int_off])/2
                 break
             }
         }
-    }
+    } #end for i
     x
 }
-imp_steps_per_day$steps_per_day <- impute_steps()
+imp_raw$steps <- impute_steps()
 
-filename <- "3_imputed+steps_per_day_hist.png"
+imp_steps_per_day <- imp_raw %>% group_by(date) %>% summarize(steps_per_day= sum(steps))
+filename <- "3_imputed_steps_per_day_hist.png"
 imputed_steps_per_day_fig <- paste(figdir, filename, sep="")
 png(filename = imputed_steps_per_day_fig, width=600, height=600)
 g <-qplot(data=imp_steps_per_day, steps_per_day, geom="histogram") +
-    ggtitle("Steps per day\n missing values are average of neightboring good data")
+    ggtitle("Histogram of steps per day\n missing values are average of neightboring good data")
 g
 ```
 
@@ -283,12 +287,44 @@ The median is now **1.0571\times 10^{4} vs 1.0765\times 10^{4}**
 By imputing the missing values, we have slightly lowered the overall mean (96%) and 
 median (98%).
 
-The histogram is stored in the file: **figures/3_imputed+steps_per_day_hist.png**
+The histogram is stored in the file: **figures/3_imputed_steps_per_day_hist.png**
 
 
 ## Are there differences in activity patterns between weekdays and weekends? ==
 
+We are requested to mark columns as factors of "weekday" or "weekend".
 
+
+```r
+imp_raw$day_type <- "weekday"
+day_type <- as.POSIXlt(imp_raw$date)$wday
+day_type <- day_type==0 | day_type==6
+imp_raw$day_type[day_type] <- "weekend"
+imp_raw$day_type <- as.factor(imp_raw$day_type)
+wday_wend <- imp_raw %>% group_by(day_type, interval) %>% summarise(count = sum(steps))
+
+filename <- "4_weekday_vs_weekend_steps.png"
+wday_wend_fig <- paste(figdir, filename, sep="")
+png(filename = wday_wend_fig, width=600, height=600)
+g <- qplot(data=wday_wend, interval, count, geom=c("point","smooth"), stat="identity") +
+    facet_grid(day_type ~ .) + ggtitle("Comparison of walking weekday vs weekend")
+g
+dev.off()
+```
+
+```
+## png 
+##   2
+```
+
+```r
+g
+```
+
+![](PA1_template_files/figure-html/wday_wend-1.png) 
+
+
+The histogram is stored in the file: **figures/4_weekday_vs_weekend_steps.png**
 
 # Appendix =================
 
