@@ -120,9 +120,10 @@ int_steps <- rawdata %>% group_by(interval) %>% summarise(daily_ave = mean(steps
 filename <- "2_ave_daily.png"
 ave_daily_fig <- paste(figdir, filename, sep="")
 png(filename = ave_daily_fig, width=600, height=600)
-g <- qplot(interval, daily_ave, data=int_steps, geom="bar", stat="identity", 
+g <- qplot(interval, daily_ave, data=int_steps, geom=c("point","smooth"), stat="identity", 
            color="red", fill = "red") +
-    xlab("5 minute intervals throughout day") + ylab("Average daily steps") +
+    xlab("5 minute intervals throughout day starting after midnight") + 
+    ylab("Average daily steps") +
     ggtitle("Average daily steps per 5 min interval")
 g
 dev.off()
@@ -307,7 +308,8 @@ filename <- "4_weekday_vs_weekend_steps.png"
 wday_wend_fig <- paste(figdir, filename, sep="")
 png(filename = wday_wend_fig, width=600, height=600)
 g <- qplot(data=wday_wend, interval, count, geom=c("point","smooth"), stat="identity") +
-    facet_grid(day_type ~ .) + ggtitle("Comparison of walking weekday vs weekend")
+    facet_grid(day_type ~ .) + ggtitle("Comparison of walking weekday vs weekend") +
+    xlab("5 minute intervals starting after midnight")
 g
 dev.off()
 ```
